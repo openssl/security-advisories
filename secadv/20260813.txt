@@ -1,0 +1,69 @@
+OpenSSL Security Advisory [13th August 2026]
+============================================
+
+Unbounded Memory Growth in QUIC Server Incoming Channel Queue (CVE-2026-14456)
+==============================================================================
+
+Severity: Low
+
+Issue summary: When an OpenSSL QUIC server (Listener SSL object) processes
+valid QUIC Initial packets for unknown destination connection IDs, it
+can allocate and queue new incoming channels without enforcing any limit.
+
+Impact summary: A remote peer that can make many Initial packets reach the
+server listener faster than the application accepts connections, can cause the
+memory allocated to store the per-channel state to grow without any limits,
+potentially making the QUIC listener unavailable and causing Denial of Service.
+
+CWE: CWE-770: Allocation of Resources Without Limits or Throttling
+
+Description: The function that handles inbound QUIC packets uses
+Connection-Id from the packet header to find an existing connection
+(QUIC channel). If no existing connection is found and the packet
+type is INITIAL, the function treats the packet as a new connection. It
+allocates a new channel object and inserts it into a queue where it
+waits to be accepted by the local application with SSL_accept(3ossl).
+The memory occupied by these initial channel objects may grow
+without bounds if the application is not able to call SSL_accept()
+frequently enough to serve these inbound connection requests.
+
+The issue is present since OpenSSL 3.5 when the QUIC server implementation
+was added.
+
+The fix introduces a limit for pending connections. The default limit is set
+to 256 pending connections (waiting to be accepted by the local application).
+Applications may change the default by calling SSL_set_value_uint(3ossl).
+
+FIPS impact: no
+The FIPS module is not affected as the QUIC implementation is outside of
+the OpenSSL FIPS module boundary.
+
+OpenSSL 4.0, 3.6 and 3.5 are vulnerable to this issue.
+
+OpenSSL 3.4, 3.0, 1.1.1 and 1.0.2 are not affected by this issue.
+
+OpenSSL 4.0 users should upgrade to OpenSSL 4.0.2 once it is released.
+OpenSSL 3.6 users should upgrade to OpenSSL 3.6.4 once it is released.
+OpenSSL 3.5 users should upgrade to OpenSSL 3.5.8 once it is released.
+
+Due to the low severity of this issue we are not issuing new releases of
+OpenSSL at this time. The fix will be included in the next release of 4.0,
+3.6, and 3.5 branches, once it becomes available. The fix is also available
+in commits f2f1465 (for 4.0), 4084152 (for 3.6), and 08e7756 (for 3.5) in
+the OpenSSL git repository.
+
+This issue was reported on 25 June 2026 by Filipe Casal (Trail of Bits)
+in collaboration with OpenAI.
+The fix has been developed by Alexandr Nedvedicky.
+
+General Advisory Notes
+======================
+
+URL for this Security Advisory:
+https://openssl-library.org/news/secadv/20260813.txt
+
+Note: the online version of the advisory may be updated with additional details
+over time.
+
+For details of OpenSSL severity classifications please see:
+https://openssl-library.org/policies/general/security-policy/
